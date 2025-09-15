@@ -17,6 +17,23 @@ self.addEventListener("fetch", event => {
         return await dynamic.fetch(event);
       }
 
+      // Handle Font Awesome CDN requests
+      const url = new URL(event.request.url);
+      if (url.hostname === "ka-f.fontawesome.com" || url.hostname === "kit.fontawesome.com") {
+        const proxiedUrl = "/a/" + __uv$config.encodeUrl(event.request.url);
+        const proxiedRequest = new Request(proxiedUrl, {
+          method: event.request.method,
+          headers: event.request.headers,
+          body: event.request.body,
+          mode: event.request.mode,
+          credentials: event.request.credentials,
+          cache: event.request.cache,
+          redirect: event.request.redirect,
+          referrer: event.request.referrer
+        });
+        return await uv.fetch({ ...event, request: proxiedRequest });
+      }
+
       if (event.request.url.startsWith(`${location.origin}/a/`)) {
         return await uv.fetch(event);
       }
