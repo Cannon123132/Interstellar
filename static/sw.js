@@ -13,25 +13,31 @@ self.dynamic = dynamic;
 self.addEventListener("fetch", event => {
   event.respondWith(
     (async () => {
-      if (await dynamic.route(event)) {
-        return await dynamic.fetch(event);
+      const url = new URL(event.request.url);
+      
+      // Handle Font Awesome CDN requests first
+      if (url.hostname === "ka-f.fontawesome.com" || url.hostname === "kit.fontawesome.com") {
+        try {
+          const proxiedUrl = "/a/" + __uv$config.encodeUrl(event.request.url);
+          const proxiedRequest = new Request(proxiedUrl, {
+            method: event.request.method,
+            headers: event.request.headers,
+            body: event.request.body,
+            mode: 'cors',
+            credentials: 'omit',
+            cache: event.request.cache,
+            redirect: event.request.redirect,
+            referrer: event.request.referrer
+          });
+          return await uv.fetch({ ...event, request: proxiedRequest });
+        } catch (error) {
+          console.error('Font Awesome proxy error:', error);
+          return new Response('', { status: 404 });
+        }
       }
 
-      // Handle Font Awesome CDN requests
-      const url = new URL(event.request.url);
-      if (url.hostname === "ka-f.fontawesome.com" || url.hostname === "kit.fontawesome.com") {
-        const proxiedUrl = "/a/" + __uv$config.encodeUrl(event.request.url);
-        const proxiedRequest = new Request(proxiedUrl, {
-          method: event.request.method,
-          headers: event.request.headers,
-          body: event.request.body,
-          mode: event.request.mode,
-          credentials: event.request.credentials,
-          cache: event.request.cache,
-          redirect: event.request.redirect,
-          referrer: event.request.referrer
-        });
-        return await uv.fetch({ ...event, request: proxiedRequest });
+      if (await dynamic.route(event)) {
+        return await dynamic.fetch(event);
       }
 
       if (event.request.url.startsWith(`${location.origin}/a/`)) {
